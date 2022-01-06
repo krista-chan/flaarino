@@ -12,6 +12,7 @@ twilight-http = "0.8.3"
 twilight-model = "0.8.3"
 twilight-interactions = "0.8.1"
 dotenv = "0.15.0"
+twilight-embed-builder = "0.8.0"
 
 [dependencies.tokio]
 version = "1.5.0"

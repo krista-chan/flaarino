@@ -1,15 +1,20 @@
 #![feature(allocator_api)]
 
-use std::{error::Error, sync::Arc, time::{SystemTime, Instant}};
+use std::{
+    error::Error,
+    sync::Arc,
+    time::{Instant, SystemTime},
+};
 
 use dotenv::dotenv;
 use futures::StreamExt;
 use std::time::UNIX_EPOCH;
+use twilight_embed_builder::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 use twilight_gateway::{cluster::ShardScheme, Cluster, Event, Intents};
 use twilight_http::Client;
 use twilight_model::{
     application::{callback::InteractionResponse, command::CommandType},
-    channel::message::MessageFlags,
+    channel::{embed::Embed, message::MessageFlags},
     id::ApplicationId,
 };
 use twilight_util::builder::{command::CommandBuilder, CallbackDataBuilder};
@@ -32,21 +37,27 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         cluster_spawn.up().await;
     });
 
-    let command = CommandBuilder::new(
-        "ping".into(),
-        String::from("Check the API latency."),
-        CommandType::ChatInput,
-    )
-    .build();
-
     let client = Arc::new(Client::new(token));
-    client.set_application_id(ApplicationId::new(927552868117012531).unwrap());
-    client.set_global_commands(&[command])?.exec().await?;
+
+    register_commands(Arc::clone(&client)).await?;
 
     while let Some((shard_id, event)) = events.next().await {
         tokio::spawn(handle_event(shard_id, event, Arc::clone(&client)));
     }
 
+    Ok(())
+}
+
+async fn register_commands(client: Arc<Client>) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let commands = &[CommandBuilder::new(
+        "ping".into(),
+        String::from("Check the API latency."),
+        CommandType::ChatInput,
+    )
+    .build()];
+
+    client.set_application_id(ApplicationId::new(927552868117012531).unwrap());
+    client.set_global_commands(commands)?.exec().await?;
     Ok(())
 }
 
@@ -70,6 +81,7 @@ async fn handle_event(
                                 .flags(MessageFlags::EPHEMERAL)
                                 .build(),
                         );
+
                         client
                             .interaction_callback(cmd.id, &cmd.token, &res)
                             .exec()
@@ -77,14 +89,19 @@ async fn handle_event(
 
                         let elapsed = now.elapsed().as_millis();
 
-                        dbg!(&cmd_sent, &ping_time, &elapsed);
+                        let pong_field = EmbedFieldBuilder::new("Command latency", format!("<:stars:928355947301208104> {}ms", ping_time)).build();
+                        let rtt_field = EmbedFieldBuilder::new("Roundtrip time", format!("<:cp:928355939650781194> {}ms", elapsed)).build();
+
+                        let embed = EmbedBuilder::new()
+                            .title("Ping")
+                            .field(pong_field)
+                            .field(rtt_field)
+                            .color(0x3F_59_8C)
+                            .build()?;
 
                         client
                             .update_interaction_original(&cmd.token)?
-                            .content(Some(&*format!(
-                                "Pong in {}ms\nRoundtrip in {}ms",
-                                ping_time, elapsed
-                            )))?
+                            .embeds(Some(&[embed]))?
                             .exec()
                             .await?;
                     }

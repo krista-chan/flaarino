@@ -157,6 +157,7 @@ dependencies = [
  "dotenv",
  "futures",
  "tokio",
+ "twilight-embed-builder",
  "twilight-gateway",
  "twilight-http",
  "twilight-interactions",
@@ -1125,6 +1126,15 @@ dependencies = [
  "url",
  "utf-8",
  "webpki",
+]
+
+[[package]]
+name = "twilight-embed-builder"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b932276afa348926de3054a99eba3a134bc938113b1c93a21d01dd706555a95f"
+dependencies = [
+ "twilight-model",
 ]
 
 [[package]]
